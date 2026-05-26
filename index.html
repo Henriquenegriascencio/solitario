@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Paciência Windows 3.1 - Versão Cross-Platform (Mobile + PC)</title>
+    <title>Impaciência</title>
     <style>
         :root {
             --bg-table: #008000;
@@ -13,7 +13,7 @@
             --gap: 15px;
         }
 
-        /* RESPONSIVIDADE PARA TELEMÓVEIS (Ecrãs pequenos) */
+        /* RESPONSIVIDADE PARA TELEMÓVEIS */
         @media (max-width: 768px) {
             :root {
                 --card-w: 42px;
@@ -27,6 +27,7 @@
             .card .suit-main { font-size: 18px !important; bottom: 2px !important; right: 4px !important; }
             #stock.empty { font-size: 20px !important; }
             #game-board { padding: 10px !important; }
+            .menu-bar { font-size: 12px !important; padding: 3px 6px !important; }
         }
 
         body { 
@@ -39,6 +40,7 @@
             overflow: hidden; 
         }
 
+        /* Barras de Interface Windows Retro */
         .title-bar { 
             background: linear-gradient(90deg, #000080, #1084d0); 
             color: white; 
@@ -47,6 +49,27 @@
             display: flex; 
             justify-content: space-between; 
             border-bottom: 2px solid #fff; 
+        }
+
+        .menu-bar {
+            background: #c0c0c0;
+            padding: 4px 10px;
+            font-size: 14px;
+            border-bottom: 2px solid #808080;
+            display: flex;
+            gap: 15px;
+            box-shadow: inset 1px 1px 0 #fff;
+        }
+
+        .menu-item {
+            cursor: pointer;
+            padding: 2px 6px;
+            color: black;
+            user-select: none;
+        }
+        .menu-item:hover {
+            background: #000080;
+            color: white;
         }
 
         #game-board {
@@ -98,7 +121,6 @@
             transition: transform 0.1s;
         }
         
-        /* Destaque visual para seleção no telemóvel */
         .card.selected {
             outline: 3px solid #ff0;
             box-shadow: 0 0 12px #ff0;
@@ -126,8 +148,13 @@
 <body>
 
     <div class="title-bar">
-        <span>Solitaire.exe</span>
+        <span>Impaciência.exe v2.2</span>
         <span>_ □ X</span>
+    </div>
+
+    <div class="menu-bar">
+        <div class="menu-item" onclick="game.init()">Jogo Novo</div>
+        <div class="menu-item" onclick="game.undo()">Desfazer Jogada (Undo)</div>
     </div>
 
     <div id="game-board">
@@ -159,10 +186,10 @@
     const FACE_ICONS = { 11: '⚔️', 12: '👑', 13: '♚' };
 
     class Card {
-        constructor(suit, value) {
+        constructor(suit, value, isFaceUp = false) {
             this.suit = suit;
             this.value = value;
-            this.isFaceUp = false;
+            this.isFaceUp = isFaceUp;
             this.color = (suit === 'hearts' || suit === 'diamonds') ? 'red' : 'black';
         }
         getLabel() {
@@ -176,13 +203,16 @@
 
     class Solitaire {
         constructor() {
-            this.selectedCardLoc = null; // Guarda a carta selecionada no clique (Mobile)
+            this.history = []; // Pilha para armazenar o histórico de jogadas
+            this.selectedCardLoc = null;
             this.init();
         }
 
         init() {
             this.stock = []; this.waste = []; this.tableau = Array.from({ length: 7 }, () => []);
             this.foundations = { hearts: [], diamonds: [], clubs: [], spades: [] };
+            this.history = []; 
+            this.selectedCardLoc = null;
 
             let deck = [];
             Object.keys(SYMBOLS).forEach(s => { for (let v = 1; v <= 13; v++) deck.push(new Card(s, v)); });
@@ -200,40 +230,68 @@
                 }
             }
             this.stock = deck;
-            this.selectedCardLoc = null;
+            this.render();
+        }
+
+        // Tira uma cópia profunda do estado atual do jogo antes de qualquer ação
+        saveState() {
+            const deepCloneCard = (c) => new Card(c.suit, c.value, c.isFaceUp);
+            
+            const snapshot = {
+                stock: this.stock.map(deepCloneCard),
+                waste: this.waste.map(deepCloneCard),
+                foundations: {
+                    hearts: this.foundations.hearts.map(deepCloneCard),
+                    diamonds: this.foundations.diamonds.map(deepCloneCard),
+                    clubs: this.foundations.clubs.map(deepCloneCard),
+                    spades: this.foundations.spades.map(deepCloneCard)
+                },
+                tableau: this.tableau.map(pile => pile.map(deepCloneCard))
+            };
+            this.history.push(snapshot);
+        }
+
+        // Lógica do botão Desfazer (Undo)
+        undo() {
+            if (this.history.length === 0) return; // Nada para desfazer
+            
+            const previousState = this.history.pop();
+            this.stock = previousState.stock;
+            this.waste = previousState.waste;
+            this.foundations = previousState.foundations;
+            this.tableau = previousState.tableau;
+            this.selectedCardLoc = null; // Limpa seleções ativas
             this.render();
         }
 
         drawCard() {
-            this.selectedCardLoc = null; // Cancela seleções ao comprar
-            if (this.stock.length > 0) {
-                const card = this.stock.pop(); card.isFaceUp = true; this.waste.push(card);
-            } else if (this.waste.length > 0) {
-                this.stock = [...this.waste].reverse().map(c => { c.isFaceUp = false; return c; });
-                this.waste = [];
+            this.selectedCardLoc = null;
+            
+            if (this.stock.length > 0 || this.waste.length > 0) {
+                this.saveState(); // Salva estado antes de comprar ou reciclar
+                
+                if (this.stock.length > 0) {
+                    const card = this.stock.pop(); card.isFaceUp = true; this.waste.push(card);
+                } else {
+                    this.stock = [...this.waste].reverse().map(c => { c.isFaceUp = false; return c; });
+                    this.waste = [];
+                }
+                this.render();
             }
-            this.render();
         }
 
-        // Sistema Inteligente de Cliques/Toques (Mobile First)
         handleCardClick(loc, event) {
-            event.stopPropagation(); // Impede o clique de ativar a pilha por trás
-
-            // 1. Se não houver carta selecionada, seleciona esta
+            event.stopPropagation();
             if (!this.selectedCardLoc) {
                 this.selectedCardLoc = loc;
                 this.render();
                 return;
             }
-
-            // 2. Se clicar na mesma carta já selecionada, cancela a seleção
             if (this.isSameLocation(this.selectedCardLoc, loc)) {
                 this.selectedCardLoc = null;
                 this.render();
                 return;
             }
-
-            // 3. Se já houver uma selecionada, tenta mover para a pilha desta nova carta
             let target = { type: loc.type };
             if (loc.type === 'tableau') target.idx = loc.idx;
             if (loc.type === 'foundation') target.suit = loc.suit;
@@ -242,7 +300,6 @@
             this.selectedCardLoc = null;
         }
 
-        // Quando o usuário clica num espaço/pilha completamente vazia
         handlePileClick(target) {
             if (this.selectedCardLoc) {
                 this.moveCards(this.selectedCardLoc, target);
@@ -257,19 +314,19 @@
         moveCards(source, target) {
             let srcArr = this.getPileArray(source);
             if (!srcArr || srcArr.length === 0) return;
-
-            // Bloqueio na fundação: Só move a última se o destino for fundação
             if (target.type === 'foundation' && source.cardIdx !== srcArr.length - 1) return;
 
-            let cardsToMove = srcArr.splice(source.cardIdx);
+            let cardsToMove = srcArr.slice(source.cardIdx);
 
             if (this.isValidMove(cardsToMove[0], target)) {
+                this.saveState(); // Salva o estado imediatamente antes de alterar os arrays
+                srcArr.splice(source.cardIdx); // Remove da origem de fato
+                
                 let destArr = this.getPileArray(target);
                 destArr.push(...cardsToMove);
                 if (srcArr.length > 0) srcArr[srcArr.length - 1].isFaceUp = true;
                 this.render();
             } else {
-                srcArr.push(...cardsToMove); // Devolve se for inválido
                 this.render();
             }
         }
@@ -320,7 +377,6 @@
                 p.innerHTML = '';
                 this.tableau[i].forEach((c, j) => {
                     const el = this.createCardEl(c, {type: 'tableau', idx: i, cardIdx: j});
-                    // Multiplicador menor de espaçamento no mobile para não estourar a tela
                     const offset = window.innerWidth <= 768 ? 14 : 25;
                     el.style.top = (j * offset) + 'px';
                     p.appendChild(el);
@@ -332,7 +388,6 @@
             const div = document.createElement('div');
             div.className = 'card' + (card.isFaceUp ? '' : ' back');
             
-            // Verifica se esta carta específica está selecionada no sistema Tap-to-Move
             if (this.selectedCardLoc && this.isSameLocation(this.selectedCardLoc, loc)) {
                 div.classList.add('selected');
             }
@@ -347,12 +402,10 @@
                     <span class="suit-main">${SYMBOLS[card.suit]}</span>
                 `;
                 
-                // Evento de Clique/Toque (Compatível com Mobile)
                 div.onclick = (e) => this.handleCardClick(loc, e);
 
-                // Eventos de Arrastar (Mantidos para o PC)
                 div.ondragstart = (e) => {
-                    this.selectedCardLoc = null; // Limpa seleção por toque se usar o arrastar
+                    this.selectedCardLoc = null;
                     e.dataTransfer.setData('json', JSON.stringify(loc));
                     setTimeout(() => div.classList.add('dragging'), 0);
                 };
@@ -364,7 +417,7 @@
 
     const game = new Solitaire();
 
-    // Eventos de Drop do PC (Rato)
+    // Eventos Drag&Drop PC
     document.querySelectorAll('.tableau-pile').forEach(p => {
         p.ondragover = e => e.preventDefault();
         p.ondrop = e => {
