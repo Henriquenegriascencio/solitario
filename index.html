@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Impaciência</title>
+    <title>Impaciência v2.4</title>
     <style>
         :root {
             --bg-table: #008000;
@@ -13,21 +13,22 @@
             --gap: 15px;
         }
 
-        /* RESPONSIVIDADE PARA TELEMÓVEIS */
+        /* OTIMIZAÇÃO MOBILE EXTREMA (Evita travamentos e scroll fantasma) */
         @media (max-width: 768px) {
             :root {
-                --card-w: 42px;
-                --card-h: 65px;
+                --card-w: 44px;
+                --card-h: 68px;
                 --radius: 3px;
-                --gap: 6px;
+                --gap: 5px;
             }
-            .card .rank { font-size: 14px !important; }
+            .card .rank { font-size: 15px !important; }
             .card .suit-mini { font-size: 10px !important; margin-top: -2px !important; }
             .card .face-icon { font-size: 24px !important; }
             .card .suit-main { font-size: 18px !important; bottom: 2px !important; right: 4px !important; }
             #stock.empty { font-size: 20px !important; }
-            #game-board { padding: 10px !important; }
-            .menu-bar { font-size: 12px !important; padding: 3px 6px !important; }
+            #game-board { padding: 8px !important; }
+            .menu-bar { font-size: 12px !important; padding: 4px 6px !important; flex-wrap: wrap; gap: 8px !important; }
+            .status-container { margin-left: auto; font-size: 11px; }
         }
 
         body { 
@@ -37,10 +38,11 @@
             display: flex; 
             flex-direction: column; 
             height: 100vh; 
-            overflow: hidden; 
+            overflow: hidden;
+            touch-action: manipulation; /* Remove atraso de 300ms do touch mobile */
         }
 
-        /* Barras de Interface Windows Retro */
+        /* Design Windows Clássico */
         .title-bar { 
             background: linear-gradient(90deg, #000080, #1084d0); 
             color: white; 
@@ -53,10 +55,11 @@
 
         .menu-bar {
             background: #c0c0c0;
-            padding: 4px 10px;
+            padding: 5px 10px;
             font-size: 14px;
             border-bottom: 2px solid #808080;
             display: flex;
+            align-items: center;
             gap: 15px;
             box-shadow: inset 1px 1px 0 #fff;
         }
@@ -66,10 +69,19 @@
             padding: 2px 6px;
             color: black;
             user-select: none;
+            border: 1px solid transparent;
         }
         .menu-item:hover {
             background: #000080;
             color: white;
+        }
+
+        .status-container {
+            margin-left: 40px;
+            display: flex;
+            gap: 20px;
+            font-weight: bold;
+            color: #000;
         }
 
         #game-board {
@@ -91,6 +103,19 @@
             box-sizing: border-box;
         }
 
+        /* Marcas de água dos Naipes nas Fundações superiores */
+        .foundation::before {
+            content: attr(data-icon);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: calc(var(--card-w) * 0.5);
+            opacity: 0.25;
+            color: white;
+        }
+        .foundation[data-suit="hearts"]::before, .foundation[data-suit="diamonds"]::before { color: rgba(255,0,0,0.35); }
+
         #stock { cursor: pointer; }
         #stock.has-cards {
             background: #0000a8;
@@ -107,6 +132,7 @@
             font-size: 40px;
         }
 
+        /* Cartas */
         .card {
             width: var(--card-w);
             height: var(--card-h);
@@ -118,13 +144,14 @@
             padding: 4px;
             cursor: pointer;
             box-shadow: 2px 2px 4px rgba(0,0,0,0.4);
-            transition: transform 0.1s;
+            transform: translateZ(0); /* Força aceleração gráfica por hardware (Sem Lag Mobile) */
+            will-change: transform;
         }
         
         .card.selected {
             outline: 3px solid #ff0;
             box-shadow: 0 0 12px #ff0;
-            transform: translateY(-5px);
+            transform: translateY(-5px) translateZ(0);
             z-index: 9999 !important;
         }
 
@@ -143,18 +170,40 @@
 
         .tableau-pile { width: var(--card-w); min-height: var(--card-h); position: relative; }
         .dragging { opacity: 0.5; }
+
+        /* TELA DE GANHOU / PERDEU (Modais Clássicos Windows) */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center;
+            z-index: 100000;
+        }
+        .window-modal {
+            background: #c0c0c0; border: 2px solid #fff;
+            box-shadow: 3px 3px 10px rgba(0,0,0,0.5); width: 300px;
+        }
+        .modal-body { padding: 20px; text-align: center; font-weight: bold; }
+        .modal-btn {
+            background: #c0c0c0; border: 2px solid #fff; border-right: 2px solid #808080; border-bottom: 2px solid #808080;
+            padding: 6px 20px; font-weight: bold; cursor: pointer; margin-top: 15px;
+        }
+        .modal-btn:active { border: 2px solid #808080; border-right: 2px solid #fff; border-bottom: 2px solid #fff; }
     </style>
 </head>
 <body>
 
     <div class="title-bar">
-        <span>Impaciência.exe v2.2</span>
+        <span>Impaciência.exe</span>
         <span>_ □ X</span>
     </div>
 
     <div class="menu-bar">
         <div class="menu-item" onclick="game.init()">Jogo Novo</div>
-        <div class="menu-item" onclick="game.undo()">Desfazer Jogada (Undo)</div>
+        <div class="menu-item" onclick="game.undo()">Desfazer</div>
+        <div class="menu-item" id="music-toggle" onclick="audioEngine.toggleMusic()">🎵 Música: OFF</div>
+        
+        <div class="status-container">
+            <span>Pontos: <span id="ui-score">0</span></span>
+        </div>
     </div>
 
     <div id="game-board">
@@ -164,10 +213,10 @@
             
             <div style="flex-grow: 1"></div>
             
-            <div class="slot foundation" data-suit="hearts" onclick="game.handlePileClick({type: 'foundation', suit: 'hearts'})"></div>
-            <div class="slot foundation" data-suit="diamonds" onclick="game.handlePileClick({type: 'foundation', suit: 'diamonds'})"></div>
-            <div class="slot foundation" data-suit="clubs" onclick="game.handlePileClick({type: 'foundation', suit: 'clubs'})"></div>
-            <div class="slot foundation" data-suit="spades" onclick="game.handlePileClick({type: 'foundation', suit: 'spades'})"></div>
+            <div class="slot foundation" data-suit="hearts" data-icon="♥" onclick="game.handlePileClick({type: 'foundation', suit: 'hearts'})"></div>
+            <div class="slot foundation" data-suit="diamonds" data-icon="♦" onclick="game.handlePileClick({type: 'foundation', suit: 'diamonds'})"></div>
+            <div class="slot foundation" data-suit="clubs" data-icon="♣" onclick="game.handlePileClick({type: 'foundation', suit: 'clubs'})"></div>
+            <div class="slot foundation" data-suit="spades" data-icon="♠" onclick="game.handlePileClick({type: 'foundation', suit: 'spades'})"></div>
         </div>
 
         <div class="row" id="tableau-row">
@@ -181,116 +230,176 @@
         </div>
     </div>
 
+    <div id="end-game-modal" class="modal-overlay">
+        <div class="window-modal">
+            <div class="title-bar"><span id="modal-title">Fim de Jogo</span></div>
+            <div class="modal-body">
+                <p id="modal-message">Ganhaste!</p>
+                <p>Pontuação Final: <span id="modal-score">0</span></p>
+                <button class="modal-btn" onclick="document.getElementById('end-game-modal').style.display='none'; game.init();">Jogar de Novo</button>
+            </div>
+        </div>
+    </div>
+
 <script>
+    /**
+     * MOTOR SINTETIZADOR DE ÁUDIO (Web Audio API NATIVA)
+     * Gera ondas sonoras puras sem depender de ficheiros externos.
+     */
+    class AudioSynthesizer {
+        constructor() {
+            this.ctx = null;
+            this.musicInterval = null;
+            this.musicPlaying = false;
+            this.noteIndex = 0;
+        }
+        init() {
+            if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        playTone(freq, type, duration, volume) {
+            this.init(); if(!this.ctx) return;
+            let osc = this.ctx.createOscillator();
+            let gainNode = this.ctx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+            gainNode.gain.setValueAtTime(volume, this.ctx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, this.ctx.currentTime + duration);
+            osc.connect(gainNode);
+            gainNode.connect(this.ctx.destination);
+            osc.start(); osc.stop(this.ctx.currentTime + duration);
+        }
+        playFlip() { this.playTone(350, 'triangle', 0.08, 0.2); }
+        playMove() { this.playTone(180, 'sine', 0.12, 0.4); }
+        playWinSound() {
+            let now = 0;
+            [261, 329, 392, 523].forEach((f, i) => {
+                setTimeout(() => this.playTone(f, 'square', 0.2, 0.15), now);
+                now += 120;
+            });
+        }
+        playLossSound() {
+            let now = 0;
+            [220, 196, 174, 146].forEach((f, i) => {
+                setTimeout(() => this.playTone(f, 'sawtooth', 0.3, 0.15), now);
+                now += 200;
+            });
+        }
+        toggleMusic() {
+            this.init();
+            const btn = document.getElementById('music-toggle');
+            if (this.musicPlaying) {
+                clearInterval(this.musicInterval);
+                this.musicPlaying = false;
+                btn.innerText = "🎵 Música: OFF";
+            } else {
+                this.musicPlaying = true;
+                btn.innerText = "🎵 Música: ON";
+                // Melodia simples em loop clássica
+                const melody = [261, 293, 329, 261, 329, 261, 392, 349];
+                this.musicInterval = setInterval(() => {
+                    let f = melody[this.noteIndex % melody.length];
+                    this.playTone(f, 'sine', 0.4, 0.04);
+                    this.noteIndex++;
+                }, 500);
+            }
+        }
+    }
+    const audioEngine = new AudioSynthesizer();
+
+    // Classes do Jogo
     const SYMBOLS = { hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' };
     const FACE_ICONS = { 11: '⚔️', 12: '👑', 13: '♚' };
 
     class Card {
         constructor(suit, value, isFaceUp = false) {
-            this.suit = suit;
-            this.value = value;
-            this.isFaceUp = isFaceUp;
+            this.suit = suit; this.value = value; this.isFaceUp = isFaceUp;
             this.color = (suit === 'hearts' || suit === 'diamonds') ? 'red' : 'black';
         }
         getLabel() {
-            if (this.value === 1) return 'A';
-            if (this.value === 11) return 'J';
-            if (this.value === 12) return 'Q';
-            if (this.value === 13) return 'K';
+            if (this.value === 1) return 'A'; if (this.value === 11) return 'J';
+            if (this.value === 12) return 'Q'; if (this.value === 13) return 'K';
             return this.value;
         }
     }
 
     class Solitaire {
         constructor() {
-            this.history = []; // Pilha para armazenar o histórico de jogadas
-            this.selectedCardLoc = null;
+            this.history = []; this.selectedCardLoc = null; this.score = 0;
             this.init();
         }
 
         init() {
             this.stock = []; this.waste = []; this.tableau = Array.from({ length: 7 }, () => []);
             this.foundations = { hearts: [], diamonds: [], clubs: [], spades: [] };
-            this.history = []; 
-            this.selectedCardLoc = null;
-
+            this.history = []; this.selectedCardLoc = null; this.score = 0;
+            
             let deck = [];
             Object.keys(SYMBOLS).forEach(s => { for (let v = 1; v <= 13; v++) deck.push(new Card(s, v)); });
 
             for (let i = deck.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [deck[i], deck[j]] = [deck[j], deck[i]];
+                const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]];
             }
 
             for (let i = 0; i < 7; i++) {
                 for (let j = 0; j <= i; j++) {
-                    let card = deck.pop();
-                    if (j === i) card.isFaceUp = true;
+                    let card = deck.pop(); if (j === i) card.isFaceUp = true;
                     this.tableau[i].push(card);
                 }
             }
             this.stock = deck;
-            this.render();
+            this.updateUI();
         }
 
-        // Tira uma cópia profunda do estado atual do jogo antes de qualquer ação
         saveState() {
             const deepCloneCard = (c) => new Card(c.suit, c.value, c.isFaceUp);
-            
             const snapshot = {
-                stock: this.stock.map(deepCloneCard),
-                waste: this.waste.map(deepCloneCard),
+                score: this.score,
+                stock: this.stock.map(deepCloneCard), waste: this.waste.map(deepCloneCard),
                 foundations: {
-                    hearts: this.foundations.hearts.map(deepCloneCard),
-                    diamonds: this.foundations.diamonds.map(deepCloneCard),
-                    clubs: this.foundations.clubs.map(deepCloneCard),
-                    spades: this.foundations.spades.map(deepCloneCard)
+                    hearts: this.foundations.hearts.map(deepCloneCard), diamonds: this.foundations.diamonds.map(deepCloneCard),
+                    clubs: this.foundations.clubs.map(deepCloneCard), spades: this.foundations.spades.map(deepCloneCard)
                 },
                 tableau: this.tableau.map(pile => pile.map(deepCloneCard))
             };
             this.history.push(snapshot);
         }
 
-        // Lógica do botão Desfazer (Undo)
         undo() {
-            if (this.history.length === 0) return; // Nada para desfazer
-            
-            const previousState = this.history.pop();
-            this.stock = previousState.stock;
-            this.waste = previousState.waste;
-            this.foundations = previousState.foundations;
-            this.tableau = previousState.tableau;
-            this.selectedCardLoc = null; // Limpa seleções ativas
-            this.render();
+            if (this.history.length === 0) return;
+            const prev = this.history.pop();
+            this.score = prev.score; this.stock = prev.stock; this.waste = prev.waste;
+            this.foundations = prev.foundations; this.tableau = prev.tableau;
+            this.selectedCardLoc = null;
+            audioEngine.playFlip();
+            this.updateUI();
         }
 
         drawCard() {
+            audioEngine.init();
             this.selectedCardLoc = null;
-            
             if (this.stock.length > 0 || this.waste.length > 0) {
-                this.saveState(); // Salva estado antes de comprar ou reciclar
-                
+                this.saveState();
                 if (this.stock.length > 0) {
                     const card = this.stock.pop(); card.isFaceUp = true; this.waste.push(card);
+                    this.score = Math.max(0, this.score + 5); // +5 por comprar carta
                 } else {
                     this.stock = [...this.waste].reverse().map(c => { c.isFaceUp = false; return c; });
                     this.waste = [];
                 }
-                this.render();
+                audioEngine.playFlip();
+                this.updateUI();
+                this.checkGameOver();
             }
         }
 
         handleCardClick(loc, event) {
+            audioEngine.init();
             event.stopPropagation();
             if (!this.selectedCardLoc) {
-                this.selectedCardLoc = loc;
-                this.render();
-                return;
+                this.selectedCardLoc = loc; this.updateUI(); return;
             }
             if (this.isSameLocation(this.selectedCardLoc, loc)) {
-                this.selectedCardLoc = null;
-                this.render();
-                return;
+                this.selectedCardLoc = null; this.updateUI(); return;
             }
             let target = { type: loc.type };
             if (loc.type === 'tableau') target.idx = loc.idx;
@@ -319,22 +428,31 @@
             let cardsToMove = srcArr.slice(source.cardIdx);
 
             if (this.isValidMove(cardsToMove[0], target)) {
-                this.saveState(); // Salva o estado imediatamente antes de alterar os arrays
-                srcArr.splice(source.cardIdx); // Remove da origem de fato
-                
+                this.saveState();
+                srcArr.splice(source.cardIdx);
                 let destArr = this.getPileArray(target);
                 destArr.push(...cardsToMove);
-                if (srcArr.length > 0) srcArr[srcArr.length - 1].isFaceUp = true;
-                this.render();
+
+                // COMPUTAÇÃO DE PONTOS REAIS
+                if (target.type === 'foundation') this.score += 10; // +10 na fundação
+                if (target.type === 'tableau' && source.type === 'waste') this.score += 5; // Waste para Tableau
+                
+                if (srcArr.length > 0 && !srcArr[srcArr.length - 1].isFaceUp) {
+                    srcArr[srcArr.length - 1].isFaceUp = true;
+                    this.score += 5; // +5 por virar carta oculta do tabuleiro
+                }
+
+                audioEngine.playMove();
+                this.updateUI();
+                this.checkGameOver();
             } else {
-                this.render();
+                this.updateUI();
             }
         }
 
         isValidMove(card, target) {
             let destArr = this.getPileArray(target);
             let top = destArr.length > 0 ? destArr[destArr.length - 1] : null;
-
             if (target.type === 'tableau') {
                 if (!top) return card.value === 13;
                 return (card.color !== top.color) && (card.value === top.value - 1);
@@ -352,7 +470,58 @@
             if (loc.type === 'foundation') return this.foundations[loc.suit];
         }
 
-        render() {
+        // VERIFICAÇÃO AUTOMÁTICA DE VITÓRIA OU DERROTA
+        checkGameOver() {
+            // Vitória: 52 cartas nas fundações
+            let winCount = this.foundations.hearts.length + this.foundations.diamonds.length + this.foundations.clubs.length + this.foundations.spades.length;
+            if (winCount === 52) {
+                this.showEndModal("Vitória! 🎉", "Parabéns professor, completou o jogo!", true);
+                return;
+            }
+
+            // Derrota: Sem cartas no stock/waste e sem movimentos válidos possíveis no tabuleiro
+            if (this.stock.length === 0 && this.waste.length === 0) {
+                let hasMoves = false;
+                
+                // Verifica se alguma carta do tabuleiro pode ir para outra coluna ou fundação
+                for (let i = 0; i < 7; i++) {
+                    let pile = this.tableau[i];
+                    if (pile.length === 0) continue;
+                    
+                    // Acha a primeira carta virada para cima da pilha
+                    let firstFaceUpIdx = pile.findIndex(c => c.isFaceUp);
+                    if(firstFaceUpIdx === -1) continue;
+                    let targetCard = pile[firstFaceUpIdx];
+
+                    // Testa contra outras colunas
+                    for(let j=0; j<7; j++) {
+                        if(i === j) continue;
+                        if(this.isValidMove(targetCard, {type: 'tableau', idx: j})) hasMoves = true;
+                    }
+                    // Testa contra fundações
+                    let topCard = pile[pile.length - 1];
+                    Object.keys(this.foundations).forEach(suit => {
+                        if(this.isValidMove(topCard, {type: 'foundation', suit: suit})) hasMoves = true;
+                    });
+                }
+
+                if (!hasMoves) {
+                    this.showEndModal("Fim de Jogo ❌", "Não há mais movimentos possíveis. Foste bloqueado!", false);
+                }
+            }
+        }
+
+        showEndModal(title, msg, isWin) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerText = msg;
+            document.getElementById('modal-score').innerText = this.score;
+            document.getElementById('end-game-modal').style.display = 'flex';
+            if (isWin) audioEngine.playWinSound(); else audioEngine.playLossSound();
+        }
+
+        updateUI() {
+            document.getElementById('ui-score').innerText = this.score;
+
             // Render Stock
             const stockEl = document.getElementById('stock');
             stockEl.className = this.stock.length > 0 ? 'slot has-cards' : 'slot empty';
@@ -405,6 +574,7 @@
                 div.onclick = (e) => this.handleCardClick(loc, e);
 
                 div.ondragstart = (e) => {
+                    audioEngine.init();
                     this.selectedCardLoc = null;
                     e.dataTransfer.setData('json', JSON.stringify(loc));
                     setTimeout(() => div.classList.add('dragging'), 0);
@@ -417,7 +587,7 @@
 
     const game = new Solitaire();
 
-    // Eventos Drag&Drop PC
+    // Eventos Mouse PC
     document.querySelectorAll('.tableau-pile').forEach(p => {
         p.ondragover = e => e.preventDefault();
         p.ondrop = e => {
